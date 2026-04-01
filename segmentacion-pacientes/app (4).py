@@ -26,7 +26,8 @@ RISK_ORDER = ['Low', 'Medium', 'High', 'Critical']
 # ── CARGA ─────────────────────────────────────────────────────────────────────
 @st.cache_data
 def load():
-    df = pd.read_csv("patient_segmentation_final.csv")
+    import os
+    df = pd.read_csv(os.path.join(os.path.dirname(__file__), "patient_segmentation_final.csv"))
 
     # Mapear cluster numérico a nombre si hace falta
     cluster_map = {0: 'Riesgo Moderado', 1: 'Bajo Riesgo', 2: 'Alto Riesgo'}
