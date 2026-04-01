@@ -280,4 +280,4 @@ st.dataframe(
 )
 
 st.markdown("---")
-st.caption("TP Segmentación de Pacientes · K-Means K=3 · Variables numéricas (V1)")s (V1)")
+st.caption("TP Segmentación de Pacientes · K-Means K=3 · Variables numéricas (V1)")
