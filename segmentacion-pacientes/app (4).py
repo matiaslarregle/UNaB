@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -26,15 +27,12 @@ RISK_ORDER = ['Low', 'Medium', 'High', 'Critical']
 # ── CARGA ─────────────────────────────────────────────────────────────────────
 @st.cache_data
 def load():
-    import os
     df = pd.read_csv(os.path.join(os.path.dirname(__file__), "patient_segmentation_final.csv"))
 
-    # Mapear cluster numérico a nombre si hace falta
     cluster_map = {0: 'Riesgo Moderado', 1: 'Bajo Riesgo', 2: 'Alto Riesgo'}
     if 'cluster' in df.columns and df['cluster'].dtype in [int, float]:
         df['cluster'] = df['cluster'].map(cluster_map)
 
-    # BMI ordinal por si no está
     if 'BMI_ord' not in df.columns:
         df['BMI_ord'] = pd.cut(
             df['BMI'],
@@ -46,49 +44,61 @@ def load():
 
 df = load()
 
+# ── NORMALIZACIÓN ─────────────────────────────────────────────────────────────
+def norm(series):
+    mn, mx = series.min(), series.max()
+    return (series - mn) / (mx - mn) if mx > mn else pd.Series(0.0, index=series.index)
+
+df['age_n']  = norm(df['Age'])
+df['bmi_n']  = norm(df['BMI_ord'])
+df['cc_n']   = norm(df['Num_Chronic_Conditions'])
+df['vis_n']  = 1 - norm(df['Annual_Visits'])       # invertida: menos visitas = más riesgo
+df['prev_n'] = df['Preventive_Care_Flag'].map(
+                   {'No': 1.0, 'Sí': 0.0, 0: 1.0, 1: 0.0}
+               ).fillna(0.0)                        # sin atención preventiva = más riesgo
+
 # ── SIDEBAR ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## 🏥 Segmentación")
     st.markdown("---")
 
     st.markdown("### Pesos del Risk Score")
-    st.caption("Ajustá los pesos según criterio clínico")
-    w_age = st.slider("Edad",                 0.0, 1.0, 0.2, 0.05)
-    w_bmi = st.slider("IMC (BMI)",            0.0, 5.0, 2.0, 0.10)
-    w_cc  = st.slider("Condiciones crónicas", 0.0, 5.0, 2.0, 0.10)
-    w_vis = st.slider("Visitas anuales",      0.0, 2.0, 0.1, 0.05)
+    st.caption("Todas las variables están normalizadas (0–1). Los pesos son comparables entre sí.")
+
+    w_age  = st.slider("Edad",                          0.0, 5.0, 1.0, 0.1)
+    w_bmi  = st.slider("IMC (BMI)",                     0.0, 5.0, 2.0, 0.1)
+    w_cc   = st.slider("Condiciones crónicas",          0.0, 5.0, 2.0, 0.1)
+    w_vis  = st.slider("Pocas visitas anuales ↑riesgo", 0.0, 5.0, 1.0, 0.1)
+    w_prev = st.slider("Sin atención preventiva",       0.0, 5.0, 1.0, 0.1)
 
     st.markdown("### Umbrales de riesgo")
-    t_low  = st.slider("Límite Low / Medium",    0,        50,        20)
-    t_mid  = st.slider("Límite Medium / High",   t_low+1,  80,        40)
-    t_high = st.slider("Límite High / Critical", t_mid+1,  120,       60)
+    t_low  = st.slider("Límite Low / Medium",    0.0,       5.0,  2.0, 0.1)
+    t_mid  = st.slider("Límite Medium / High",   t_low,    10.0,  4.0, 0.1)
+    t_high = st.slider("Límite High / Critical", t_mid,    15.0,  6.0, 0.1)
 
     st.markdown("### Filtros")
     cluster_filter = st.multiselect(
-        "Clusters",
-        options=CLUSTER_ORDER,
-        default=CLUSTER_ORDER
+        "Clusters", options=CLUSTER_ORDER, default=CLUSTER_ORDER
     )
     risk_filter = st.multiselect(
-        "Niveles de riesgo",
-        options=RISK_ORDER,
-        default=RISK_ORDER
+        "Niveles de riesgo", options=RISK_ORDER, default=RISK_ORDER
     )
 
 # ── RISK SCORE DINÁMICO ───────────────────────────────────────────────────────
 df['Risk_Score'] = (
-    df['Age']                    * w_age +
-    df['BMI_ord']                * w_bmi +
-    df['Num_Chronic_Conditions'] * w_cc  +
-    df['Annual_Visits']          * w_vis
+    df['age_n']  * w_age  +
+    df['bmi_n']  * w_bmi  +
+    df['cc_n']   * w_cc   +
+    df['vis_n']  * w_vis  +
+    df['prev_n'] * w_prev
 )
+
 df['Risk_Level'] = pd.cut(
     df['Risk_Score'],
     bins=[-np.inf, t_low, t_mid, t_high, np.inf],
     labels=['Low', 'Medium', 'High', 'Critical']
 ).astype(str)
 
-# Aplicar filtros
 df_f = df[
     df['cluster'].isin(cluster_filter) &
     df['Risk_Level'].isin(risk_filter)
@@ -97,8 +107,10 @@ df_f = df[
 # ── HEADER ────────────────────────────────────────────────────────────────────
 st.title("🏥 Segmentación de Pacientes")
 st.caption(
-    "Ajustá los pesos del Risk Score desde el sidebar y explorá "
-    "cómo cambia la distribución de riesgo dentro de cada cluster."
+    "Ajustá los pesos del Risk Score desde el sidebar y explorá cómo cambia "
+    "la distribución de riesgo dentro de cada cluster. "
+    "Todas las variables están normalizadas entre 0 y 1, por lo que "
+    "los pesos son directamente comparables entre sí."
 )
 st.markdown("---")
 
@@ -108,11 +120,11 @@ total = len(df_f)
 high  = len(df_f[df_f['Risk_Level'].isin(['High', 'Critical'])])
 
 c1.metric("Pacientes", f"{total:,}")
-c2.metric("Alto / Crítico",    f"{high:,}",
+c2.metric("Alto / Crítico", f"{high:,}",
           delta=f"{high/total*100:.1f}% del total" if total > 0 else "—")
 c3.metric("Risk Score promedio",
-          f"{df_f['Risk_Score'].mean():.1f}" if total > 0 else "—")
-c4.metric("Clusters activos",  len(cluster_filter))
+          f"{df_f['Risk_Score'].mean():.2f}" if total > 0 else "—")
+c4.metric("Clusters activos", len(cluster_filter))
 
 st.markdown("---")
 
@@ -163,10 +175,8 @@ st.markdown("---")
 st.markdown("## Distribución de variables por cluster")
 
 num_vars = ['Age', 'Num_Chronic_Conditions', 'Annual_Visits',
-            'Avg_Billing_Amount', 'BMI_ord', 'Days_Since_Last_Visit',
-            'Risk_Score']
-cat_vars = ['Gender', 'Insurance_Type', 'Primary_Condition',
-            'Preventive_Care_Flag']
+            'Avg_Billing_Amount', 'BMI_ord', 'Days_Since_Last_Visit', 'Risk_Score']
+cat_vars = ['Gender', 'Insurance_Type', 'Primary_Condition', 'Preventive_Care_Flag']
 
 tab_num, tab_cat = st.tabs(["Numéricas 📊", "Categóricas 📋"])
 
@@ -222,10 +232,8 @@ with tab_cat:
             counts = subset[var_cat].value_counts()
             color  = CLUSTER_COLORS[cluster_name]
 
-            bars = ax.barh(counts.index, counts.values,
-                           color=color, alpha=0.85)
-            ax.set_title(cluster_name, color=color,
-                         fontsize=11, fontweight='bold')
+            bars = ax.barh(counts.index, counts.values, color=color, alpha=0.85)
+            ax.set_title(cluster_name, color=color, fontsize=11, fontweight='bold')
             ax.set_xlabel('Pacientes', fontsize=9)
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
@@ -250,13 +258,13 @@ st.markdown("## Pacientes")
 cols_show = ['PatientID', 'Age', 'Gender', 'Insurance_Type',
              'Num_Chronic_Conditions', 'Annual_Visits',
              'Avg_Billing_Amount', 'Primary_Condition',
-             'cluster', 'Risk_Level', 'Risk_Score']
+             'Preventive_Care_Flag', 'cluster', 'Risk_Level', 'Risk_Score']
 
 df_show = (df_f[[c for c in cols_show if c in df_f.columns]]
            .copy()
            .sort_values('Risk_Score', ascending=False))
 
-df_show['Risk_Score'] = df_show['Risk_Score'].round(2)
+df_show['Risk_Score'] = df_show['Risk_Score'].round(3)
 df_show = df_show.rename(columns={'cluster': 'Cluster'})
 
 st.caption(f"{len(df_show):,} pacientes · ordenados por Risk Score descendente")
@@ -266,10 +274,10 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
     column_config={
-        "Risk_Score": st.column_config.NumberColumn("Risk Score", format="%.2f"),
+        "Risk_Score": st.column_config.NumberColumn("Risk Score", format="%.3f"),
         "Avg_Billing_Amount": st.column_config.NumberColumn("Avg Billing", format="$%.0f"),
     }
 )
 
 st.markdown("---")
-st.caption("TP Segmentación de Pacientes · K-Means K=3 · Variables numéricas (V1)")
+st.caption("TP Segmentación de Pacientes · K-Means K=3 · Variables numéricas (V1)")s (V1)")
