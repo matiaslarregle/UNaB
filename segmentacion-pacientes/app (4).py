@@ -33,15 +33,6 @@ def load():
     if 'cluster' in df.columns and df['cluster'].dtype in [int, float]:
         df['cluster'] = df['cluster'].map(cluster_map)
 
-    if 'BMI_ord' not in df.columns:
-        df['BMI_ord'] = pd.cut(
-            df['BMI'],
-            bins=[0, 24.9, 29.9, 34.9, 39.9, 100],
-            labels=[0, 1, 2, 3, 4]
-        ).astype(float)
-
-    return df
-
 df = load()
 
 # ── NORMALIZACIÓN ─────────────────────────────────────────────────────────────
