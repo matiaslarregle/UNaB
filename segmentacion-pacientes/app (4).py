@@ -97,30 +97,6 @@ df_f = df[
     df['Risk_Level'].isin(risk_filter)
 ].copy()
 
-# ── HEADER ────────────────────────────────────────────────────────────────────
-st.title("🏥 Segmentación de Pacientes")
-st.caption(
-    "Ajustá los pesos del Risk Score desde el sidebar y explorá cómo cambia "
-    "la distribución de riesgo dentro de cada cluster. "
-    "Todas las variables están normalizadas entre 0 y 1, por lo que "
-    "los pesos son directamente comparables entre sí."
-)
-st.markdown("---")
-
-# ── MÉTRICAS ──────────────────────────────────────────────────────────────────
-c1, c2, c3, c4 = st.columns(4)
-total = len(df_f)
-high  = len(df_f[df_f['Risk_Level'].isin(['High', 'Critical'])])
-
-c1.metric("Pacientes", f"{total:,}")
-c2.metric("Alto / Crítico", f"{high:,}",
-          delta=f"{high/total*100:.1f}% del total" if total > 0 else "—")
-c3.metric("Risk Score promedio",
-          f"{df_f['Risk_Score'].mean():.2f}" if total > 0 else "—")
-c4.metric("Clusters activos", len(cluster_filter))
-
-st.markdown("---")
-
 # ── DISTRIBUCIONES DE VARIABLES ───────────────────────────────────────────────
 st.markdown("## Distribución de variables por cluster")
 
@@ -199,6 +175,30 @@ with tab_cat:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+
+st.markdown("---")
+
+# ── HEADER ────────────────────────────────────────────────────────────────────
+st.title("🏥 Segmentación de Pacientes")
+st.caption(
+    "Ajustá los pesos del Risk Score desde el sidebar y explorá cómo cambia "
+    "la distribución de riesgo dentro de cada cluster. "
+    "Todas las variables están normalizadas entre 0 y 1, por lo que "
+    "los pesos son directamente comparables entre sí."
+)
+st.markdown("---")
+
+# ── MÉTRICAS ──────────────────────────────────────────────────────────────────
+c1, c2, c3, c4 = st.columns(4)
+total = len(df_f)
+high  = len(df_f[df_f['Risk_Level'].isin(['High', 'Critical'])])
+
+c1.metric("Pacientes", f"{total:,}")
+c2.metric("Alto / Crítico", f"{high:,}",
+          delta=f"{high/total*100:.1f}% del total" if total > 0 else "—")
+c3.metric("Risk Score promedio",
+          f"{df_f['Risk_Score'].mean():.2f}" if total > 0 else "—")
+c4.metric("Clusters activos", len(cluster_filter))
 
 st.markdown("---")
 
