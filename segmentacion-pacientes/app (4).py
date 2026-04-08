@@ -43,7 +43,7 @@ def norm(series):
     return (series - mn) / (mx - mn) if mx > mn else pd.Series(0.0, index=series.index)
 
 df['age_n']  = norm(df['Age'])
-df['bmi_n']  = norm(df['BMI_ord'])
+df['bmi_n']  = norm(df['BMI'])
 df['cc_n']   = norm(df['Num_Chronic_Conditions'])
 df['vis_n']  = 1 - norm(df['Annual_Visits'])       # invertida: menos visitas = más riesgo
 df['prev_n'] = df['Preventive_Care_Flag'].map(
@@ -125,7 +125,7 @@ st.markdown("---")
 st.markdown("## Distribución de variables por cluster")
 
 num_vars = ['Age', 'Num_Chronic_Conditions', 'Annual_Visits',
-            'Avg_Billing_Amount', 'BMI_ord', 'Days_Since_Last_Visit', 'Risk_Score']
+            'Avg_Billing_Amount', 'BMI', 'Days_Since_Last_Visit', 'Risk_Score']
 cat_vars = ['Gender', 'Insurance_Type', 'Primary_Condition', 'Preventive_Care_Flag']
 
 tab_num, tab_cat = st.tabs(["Numéricas 📊", "Categóricas 📋"])
