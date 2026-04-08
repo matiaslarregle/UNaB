@@ -33,6 +33,8 @@ def load():
     if 'cluster' in df.columns and df['cluster'].dtype in [int, float]:
         df['cluster'] = df['cluster'].map(cluster_map)
 
+    return df
+    
 df = load()
 
 # ── NORMALIZACIÓN ─────────────────────────────────────────────────────────────
