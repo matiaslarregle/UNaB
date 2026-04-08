@@ -97,6 +97,16 @@ df_f = df[
     df['Risk_Level'].isin(risk_filter)
 ].copy()
 
+# ── HEADER ────────────────────────────────────────────────────────────────────
+st.title("🏥 Segmentación de Pacientes")
+st.caption(
+    "Ajustá los pesos del Risk Score desde el sidebar y explorá cómo cambia "
+    "la distribución de riesgo dentro de cada cluster. "
+    "Todas las variables están normalizadas entre 0 y 1, por lo que "
+    "los pesos son directamente comparables entre sí."
+)
+st.markdown("---")
+
 # ── MÉTRICAS ──────────────────────────────────────────────────────────────────
 c1, c2, c3, c4 = st.columns(4)
 total = len(df_f)
@@ -190,16 +200,6 @@ with tab_cat:
         st.pyplot(fig)
         plt.close()
 
-st.markdown("---")
-
-# ── HEADER ────────────────────────────────────────────────────────────────────
-st.title("🏥 Segmentación de Pacientes")
-st.caption(
-    "Ajustá los pesos del Risk Score desde el sidebar y explorá cómo cambia "
-    "la distribución de riesgo dentro de cada cluster. "
-    "Todas las variables están normalizadas entre 0 y 1, por lo que "
-    "los pesos son directamente comparables entre sí."
-)
 st.markdown("---")
 
 # ── DISTRIBUCIÓN RISK LEVEL POR CLUSTER ──────────────────────────────────────
