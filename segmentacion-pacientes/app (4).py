@@ -128,49 +128,6 @@ c4.metric("Clusters activos", len(cluster_filter))
 
 st.markdown("---")
 
-# ── DISTRIBUCIÓN RISK LEVEL POR CLUSTER ──────────────────────────────────────
-st.markdown("## Distribución de Risk Level por cluster")
-
-if total == 0:
-    st.warning("No hay pacientes con los filtros seleccionados.")
-else:
-    fig, ax = plt.subplots(figsize=(10, 4))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
-
-    pivot = (df_f
-             .groupby(['cluster', 'Risk_Level'])
-             .size()
-             .reset_index(name='count'))
-
-    x     = np.arange(len(cluster_filter))
-    width = 0.2
-
-    for k, level in enumerate(RISK_ORDER):
-        if level not in risk_filter:
-            continue
-        vals = [
-            pivot[(pivot['cluster'] == cl) &
-                  (pivot['Risk_Level'] == level)]['count'].sum()
-            for cl in cluster_filter
-        ]
-        ax.bar(x + k * width, vals, width,
-               label=level, color=RISK_COLORS[level], alpha=0.85)
-
-    ax.set_xticks(x + width * 1.5)
-    ax.set_xticklabels(cluster_filter, fontsize=11)
-    ax.set_ylabel('Pacientes', fontsize=11)
-    ax.set_title('Risk Level por cluster', fontsize=13, fontweight='bold')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.legend(frameon=False, fontsize=10)
-    ax.grid(True, axis='y', alpha=0.25, linestyle='--')
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
-
-st.markdown("---")
-
 # ── DISTRIBUCIONES DE VARIABLES ───────────────────────────────────────────────
 st.markdown("## Distribución de variables por cluster")
 
@@ -249,6 +206,49 @@ with tab_cat:
         plt.tight_layout()
         st.pyplot(fig)
         plt.close()
+
+st.markdown("---")
+
+# ── DISTRIBUCIÓN RISK LEVEL POR CLUSTER ──────────────────────────────────────
+st.markdown("## Distribución de Risk Level por cluster")
+
+if total == 0:
+    st.warning("No hay pacientes con los filtros seleccionados.")
+else:
+    fig, ax = plt.subplots(figsize=(10, 4))
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
+
+    pivot = (df_f
+             .groupby(['cluster', 'Risk_Level'])
+             .size()
+             .reset_index(name='count'))
+
+    x     = np.arange(len(cluster_filter))
+    width = 0.2
+
+    for k, level in enumerate(RISK_ORDER):
+        if level not in risk_filter:
+            continue
+        vals = [
+            pivot[(pivot['cluster'] == cl) &
+                  (pivot['Risk_Level'] == level)]['count'].sum()
+            for cl in cluster_filter
+        ]
+        ax.bar(x + k * width, vals, width,
+               label=level, color=RISK_COLORS[level], alpha=0.85)
+
+    ax.set_xticks(x + width * 1.5)
+    ax.set_xticklabels(cluster_filter, fontsize=11)
+    ax.set_ylabel('Pacientes', fontsize=11)
+    ax.set_title('Risk Level por cluster', fontsize=13, fontweight='bold')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.legend(frameon=False, fontsize=10)
+    ax.grid(True, axis='y', alpha=0.25, linestyle='--')
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close()
 
 st.markdown("---")
 
