@@ -3,7 +3,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import seaborn as sns
 
 st.set_page_config(
@@ -129,110 +128,6 @@ num_vars = ['Age', 'Num_Chronic_Conditions', 'Annual_Visits',
             'Avg_Billing_Amount', 'BMI', 'Days_Since_Last_Visit', 'Risk_Score']
 cat_vars = ['Gender', 'Insurance_Type', 'Primary_Condition', 'Preventive_Care_Flag']
 
-DISCRETE_VARS = {'Num_Chronic_Conditions', 'Annual_Visits', 'BMI'}
-
-
-def dot_plot(df_f, var, cluster_order, cluster_colors):
-    active = [c for c in cluster_order if c in df_f['cluster'].unique()]
-    values = sorted(df_f[var].dropna().unique())
-
-    fig, ax = plt.subplots(figsize=(6, max(4, len(values) * 0.55)))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
-
-    n_clusters = len(active)
-    x_positions = {c: i for i, c in enumerate(active)}
-    max_freq = 0
-
-    freq_table = {}
-    for c in active:
-        sub = df_f[df_f['cluster'] == c][var].dropna()
-        counts = sub.value_counts(normalize=True)
-        freq_table[c] = counts
-        if counts.max() > max_freq:
-            max_freq = counts.max()
-
-    max_radius = 0.38
-    min_show   = 0.005
-
-    for v_idx, v in enumerate(values):
-        y = v_idx
-        ax.axhline(y, color='#e5e5e0', linewidth=0.5, zorder=0)
-        for c in active:
-            x = x_positions[c]
-            freq = freq_table[c].get(v, 0)
-            if freq < min_show:
-                ax.scatter(x, y, s=8, color='#d3d1c7', zorder=2, linewidths=0)
-            else:
-                r = min_show**0.5 + (freq / max_freq)**0.5 * (max_radius - min_show**0.5)
-                size_pts = (r * fig.dpi * 0.9) ** 2
-                ax.scatter(x, y, s=size_pts, color=cluster_colors[c],
-                           alpha=0.75, zorder=3, linewidths=0.4,
-                           edgecolors=cluster_colors[c])
-                if freq >= 0.08:
-                    ax.text(x, y, f'{freq:.0%}',
-                            ha='center', va='center',
-                            fontsize=7.5, color='white', fontweight='bold', zorder=4)
-
-    ax.set_xticks(range(n_clusters))
-    ax.set_xticklabels(active, fontsize=10)
-    ax.set_yticks(range(len(values)))
-    ax.set_yticklabels([str(int(v)) if isinstance(v, (int, float)) and v == int(v) else str(v)
-                        for v in values], fontsize=9)
-    ax.set_xlim(-0.6, n_clusters - 0.4)
-    ax.set_ylim(-0.6, len(values) - 0.4)
-    ax.set_xlabel('')
-    ax.set_ylabel(var, fontsize=10)
-    ax.set_title(f'Distribución de {var} por cluster', fontsize=13, fontweight='bold')
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    ax.tick_params(left=False)
-
-    legend_freqs = [0.10, 0.25, 0.50]
-    legend_handles = []
-    for lf in legend_freqs:
-        r = min_show**0.5 + (lf / max_freq)**0.5 * (max_radius - min_show**0.5)
-        s = (r * fig.dpi * 0.9) ** 2
-        h = ax.scatter([], [], s=s, color='#888780', alpha=0.6)
-        legend_handles.append((h, f'{lf:.0%}'))
-    ax.legend(
-        [h for h, _ in legend_handles],
-        [l for _, l in legend_handles],
-        title='Frec. relativa', title_fontsize=8,
-        fontsize=8, loc='lower right',
-        frameon=True, framealpha=0.9,
-        handletextpad=0.3, labelspacing=0.6
-    )
-
-    plt.tight_layout()
-    return fig
-
-
-def violin_plot(df_f, var, cluster_order, cluster_colors):
-    active = [c for c in cluster_order if c in df_f['cluster'].unique()]
-    fig, ax = plt.subplots(figsize=(10, 4))
-    fig.patch.set_facecolor('white')
-    ax.set_facecolor('white')
-    sns.violinplot(
-        data=df_f,
-        x='cluster', y=var,
-        order=active,
-        palette=cluster_colors,
-        inner='quartile',
-        linewidth=1,
-        ax=ax
-    )
-    ax.set_title(f'Distribución de {var} por cluster', fontsize=13, fontweight='bold')
-    ax.set_xlabel('')
-    ax.set_ylabel(var, fontsize=11)
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.grid(True, axis='y', alpha=0.25, linestyle='--')
-    plt.tight_layout()
-    return fig
-
-
 tab_num, tab_cat = st.tabs(["Numéricas 📊", "Categóricas 📋"])
 
 with tab_num:
@@ -241,17 +136,29 @@ with tab_num:
     if total == 0:
         st.warning("Sin datos con los filtros actuales.")
     else:
-        if var_num in DISCRETE_VARS:
-            fig = dot_plot(df_f, var_num, CLUSTER_ORDER, CLUSTER_COLORS)
-            st.pyplot(fig)
-            st.caption(
-                "Cada fila es un valor posible. "
-                "El tamaño del círculo representa la frecuencia relativa dentro de cada cluster. "
-                "Los porcentajes aparecen cuando la frecuencia supera el 8%."
-            )
-        else:
-            fig = violin_plot(df_f, var_num, CLUSTER_ORDER, CLUSTER_COLORS)
-            st.pyplot(fig)
+        fig, ax = plt.subplots(figsize=(10, 4))
+        fig.patch.set_facecolor('white')
+        ax.set_facecolor('white')
+
+        sns.violinplot(
+            data=df_f,
+            x='cluster', y=var_num,
+            order=[c for c in CLUSTER_ORDER if c in cluster_filter],
+            palette=CLUSTER_COLORS,
+            inner='quartile',
+            linewidth=1,
+            ax=ax
+        )
+
+        ax.set_title(f'Distribución de {var_num} por cluster',
+                     fontsize=13, fontweight='bold')
+        ax.set_xlabel('')
+        ax.set_ylabel(var_num, fontsize=11)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.grid(True, axis='y', alpha=0.25, linestyle='--')
+        plt.tight_layout()
+        st.pyplot(fig)
         plt.close()
 
 with tab_cat:
